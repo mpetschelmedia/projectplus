@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unified Project Portal</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f6f7f9; }
+    header { background: #1f2937; color: white; padding: 1rem; }
+    main { padding: 1rem; }
+    .card { background: white; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+    button { padding: .5rem 1rem; border-radius: 8px; border: none; cursor: pointer; }
+    button.primary { background: #2563eb; color: white; }
+    input { padding: .5rem; width: 100%; margin-bottom: .5rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Unified Project Portal</h1>
+    <p>Canvas‑connected group projects</p>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>Your Projects</h2>
+      <ul id="projectList"></ul>
+      <button class="primary" onclick="createProject()">+ New Project</button>
+    </div>
+
+    <div class="card" id="projectView" hidden>
+      <h2 id="projectTitle"></h2>
+      <section>
+        <h3>Messages</h3>
+        <ul id="messages"></ul>
+        <input id="messageInput" placeholder="Type a message" />
+        <button onclick="sendMessage()">Send</button>
+      </section>
+
+      <section>
+        <h3>Resources</h3>
+        <ul id="resources"></ul>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    // ---- Mock Data Store (replace later with backend or IndexedDB) ----
+    const state = {
+      projects: [],
+      currentProject: null
+    };
+
+    function createProject() {
+      const name = prompt("Project name?");
+      if (!name) return;
+      const project = {
+        id: crypto.randomUUID(),
+        name,
+        messages: [],
+        resources: []
+      };
+      state.projects.push(project);
+      renderProjects();
+    }
+
+    function openProject(id) {
+      state.currentProject = state.projects.find(p => p.id === id);
+      document.getElementById('projectView').hidden = false;
+      document.getElementById('projectTitle').textContent = state.currentProject.name;
+      renderMessages();
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('messageInput');
+      if (!input.value) return;
+      state.currentProject.messages.push({
+        text: input.value,
+        time: new Date().toLocaleTimeString()
+      });
+      input.value = '';
+      renderMessages();
+    }
+
+    function renderProjects() {
+      const list = document.getElementById('projectList');
+      list.innerHTML = '';
+      state.projects.forEach(p => {
+        const li = document.createElement('li');
+        li.textContent = p.name;
+        li.style.cursor = 'pointer';
+        li.onclick = () => openProject(p.id);
+        list.appendChild(li);
+      });
+    }
+
+    function renderMessages() {
+      const list = document.getElementById('messages');
+      list.innerHTML = '';
+      state.currentProject.messages.forEach(m => {
+        const li = document.createElement('li');
+        li.textContent = `[${m.time}] ${m.text}`;
+        list.appendChild(li);
+      });
+    }
+
+    // ---- Canvas API placeholder ----
+    async function fetchCanvasAssignments() {
+      // Later: fetch('https://canvas.instructure.com/api/v1/courses/...', { headers })
+      console.log('Canvas API integration goes here');
+    }
+  </script>
+</body>
+</html>
