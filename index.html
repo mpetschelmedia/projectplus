@@ -44,124 +44,121 @@
   </main>
 
   <script type="module">
-    // ---------------- Firebase Setup ----------------
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    // NOTE: Analytics disabled for now to avoid runtime errors on GitHub Pages
-    // import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+  /* ================================
+     ProjectPlus – Clean Working Script
+     ================================ */
 
-    const app = initializeApp(firebaseConfig);
-    // Initialize Firestore once
-    const db = getFirestore(app);
-    const projectsRef = collection(db, "projects");
+  // ---- Firebase imports (CDN, GitHub Pages safe) ----
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+  // ---- Firebase config ----
+  const firebaseConfig = {
+    apiKey: "AIzaSyABiF_qcnKQ4WQYNj0gg94_gKwphv3SX1w",
+    authDomain: "project-plus-2c7bc.firebaseapp.com",
+    projectId: "project-plus-2c7bc",
+    storageBucket: "project-plus-2c7bc.appspot.com",
+    messagingSenderId: "985256399261",
+    appId: "1:985256399261:web:fc0e5053ac70ac6cb51f74"
+  };
 
-    // ---- Mock Data Store (replace later with backend or IndexedDB) ----
-    const state = {
-      projects: [],
-      currentProject: null
-    };
+  // ---- Initialize Firebase ----
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const projectsRef = collection(db, "projects");
 
-    async function createProject() {
-      const name = prompt("Project name?");
-      if (!name) return;
+  // ---- App state ----
+  const state = {
+    projects: [],
+    currentProject: null
+  };
 
-      const project = {
-        name,
-        messages: [],
-        created: Date.now()
-      };
+  // ---- UI helpers ----
+  function renderProjects() {
+    const list = document.getElementById('projectList');
+    list.innerHTML = '';
 
-      const docRef = await addDoc(projectsRef, project);
-      project.id = docRef.id;
-
-      state.projects.push(project);
-      renderProjects();
-    };
-      state.projects.push(project);
-      renderProjects();
-    }
-
-    function openProject(id) {
-      state.currentProject = state.projects.find(p => p.id === id);
-      document.getElementById('projectView').hidden = false;
-      document.getElementById('projectTitle').textContent = state.currentProject.name;
-      renderMessages();
-    }
-
-    async function sendMessage() {
-      const input = document.getElementById('messageInput');
-      if (!input.value) return;
-
-      state.currentProject.messages.push({
-        text: input.value,
-        time: new Date().toLocaleTimeString()
-      });
-
-      const projectDoc = doc(db, "projects", state.currentProject.id);
-      await updateDoc(projectDoc, {
-        messages: state.currentProject.messages
-      });
-
-      input.value = '';
-      renderMessages();
+    state.projects.forEach(p => {
+      const li = document.createElement('li');
+      li.textContent = p.name;
+      li.style.cursor = 'pointer';
+      li.onclick = () => openProject(p.id);
+      list.appendChild(li);
     });
-      input.value = '';
-      renderMessages();
-    }
+  }
 
-    function renderProjects() {
-      const list = document.getElementById('projectList');
-      list.innerHTML = '';
-      state.projects.forEach(p => {
-        const li = document.createElement('li');
-        li.textContent = p.name;
-        li.style.cursor = 'pointer';
-        li.onclick = () => openProject(p.id);
-        list.appendChild(li);
-      });
-    }
+  function renderMessages() {
+    const list = document.getElementById('messages');
+    list.innerHTML = '';
 
-    function renderMessages() {
-      const list = document.getElementById('messages');
-      list.innerHTML = '';
-      state.currentProject.messages.forEach(m => {
-        const li = document.createElement('li');
-        li.textContent = `[${m.time}] ${m.text}`;
-        list.appendChild(li);
-      });
-    }
+    if (!state.currentProject) return;
 
-    // ---- Load Projects from Firebase on Startup ----
-    async function loadProjects() {
-      const snapshot = await getDocs(projectsRef);
-      snapshot.forEach(docSnap => {
-        state.projects.push({ id: docSnap.id, ...docSnap.data() });
-      });
-      renderProjects();
-    }
+    state.currentProject.messages.forEach(m => {
+      const li = document.createElement('li');
+      li.textContent = `[${m.time}] ${m.text}`;
+      list.appendChild(li);
+    });
+  }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      console.log('App loaded');
-      loadProjects();
+  // ---- Core actions ----
+  async function loadProjects() {
+    state.projects = [];
+    const snap = await getDocs(projectsRef);
 
-      const newBtn = document.getElementById('newProjectBtn');
-      const sendBtn = document.getElementById('sendMessageBtn');
-
-      if (!newBtn || !sendBtn) {
-        console.error('Buttons not found in DOM');
-        return;
-      }
-
-      newBtn.addEventListener('click', createProject);
-      sendBtn.addEventListener('click', sendMessage);
+    snap.forEach(d => {
+      state.projects.push({ id: d.id, ...d.data() });
     });
 
-    // ---- Canvas API placeholder ----
-    async function fetchCanvasAssignments() {
-      // Later: fetch('https://canvas.instructure.com/api/v1/courses/...', { headers })
-      console.log('Canvas API integration goes here');
-    }
-  </script>
+    renderProjects();
+  }
+
+  async function createProject() {
+    const name = prompt("Project name?");
+    if (!name) return;
+
+    const project = {
+      name,
+      messages: [],
+      created: Date.now()
+    };
+
+    const ref = await addDoc(projectsRef, project);
+    state.projects.push({ id: ref.id, ...project });
+    renderProjects();
+  }
+
+  function openProject(id) {
+    state.currentProject = state.projects.find(p => p.id === id);
+    document.getElementById('projectView').hidden = false;
+    document.getElementById('projectTitle').textContent = state.currentProject.name;
+    renderMessages();
+  }
+
+  async function sendMessage() {
+    if (!state.currentProject) return;
+
+    const input = document.getElementById('messageInput');
+    if (!input.value) return;
+
+    state.currentProject.messages.push({
+      text: input.value,
+      time: new Date().toLocaleTimeString()
+    });
+
+    await updateDoc(doc(db, "projects", state.currentProject.id), {
+      messages: state.currentProject.messages
+    });
+
+    input.value = '';
+    renderMessages();
+  }
+
+  // ---- Startup ----
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('newProjectBtn').addEventListener('click', createProject);
+    document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
+    loadProjects();
+  });
+</script>
 </body>
 </html>
