@@ -43,22 +43,49 @@
     </div>
   </main>
 
-  <script>
+  <script type="module">
+    // ---------------- Firebase Setup ----------------
+    // 1. Create a Firebase project
+    // 2. Enable Firestore Database
+    // 3. Replace the config below with your own
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "XXXX",
+      appId: "XXXX"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const projectsRef = collection(db, "projects");
+
+
     // ---- Mock Data Store (replace later with backend or IndexedDB) ----
     const state = {
       projects: [],
       currentProject: null
     };
 
-    function createProject() {
+    async function createProject() {
       const name = prompt("Project name?");
       if (!name) return;
+
       const project = {
-        id: crypto.randomUUID(),
         name,
         messages: [],
-        resources: []
+        created: Date.now()
       };
+
+      const docRef = await addDoc(projectsRef, project);
+      project.id = docRef.id;
+
+      state.projects.push(project);
       state.projects.push(project);
       renderProjects();
     }
