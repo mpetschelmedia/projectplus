@@ -24,7 +24,7 @@
     <div class="card">
       <h2>Your Projects</h2>
       <ul id="projectList"></ul>
-      <button class="primary" onclick="createProject()">+ New Project</button>
+      <button class="primary" id="newProjectBtn">+ New Project</button>
     </div>
 
     <div class="card" id="projectView" hidden>
@@ -33,7 +33,7 @@
         <h3>Messages</h3>
         <ul id="messages"></ul>
         <input id="messageInput" placeholder="Type a message" />
-        <button onclick="sendMessage()">Send</button>
+        <button id="sendMessageBtn">Send</button>
       </section>
 
       <section>
@@ -152,6 +152,10 @@
     }
 
     loadProjects();
+
+    // ---- Wire UI events (required for type=module) ----
+    document.getElementById('newProjectBtn').addEventListener('click', createProject);
+    document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
 
     // ---- Canvas API placeholder ----
     async function fetchCanvasAssignments() {
