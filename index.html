@@ -47,20 +47,11 @@
     // ---------------- Firebase Setup ----------------
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyABiF_qcnKQ4WQYNj0gg94_gKwphv3SX1w",
-      authDomain: "project-plus-2c7bc.firebaseapp.com",
-      projectId: "project-plus-2c7bc",
-      storageBucket: "project-plus-2c7bc.appspot.com",
-      messagingSenderId: "985256399261",
-      appId: "1:985256399261:web:fc0e5053ac70ac6cb51f74",
-      measurementId: "G-PJQS8DRNRS"
-    };
+    // NOTE: Analytics disabled for now to avoid runtime errors on GitHub Pages
+    // import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
 
     const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
+    const db = getFirestore(app);
     const db = getFirestore(app);
 
     const projectsRef = collection(db, "projects");
@@ -151,11 +142,21 @@
       renderProjects();
     }
 
-    loadProjects();
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('App loaded');
+      loadProjects();
 
-    // ---- Wire UI events (required for type=module) ----
-    document.getElementById('newProjectBtn').addEventListener('click', createProject);
-    document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
+      const newBtn = document.getElementById('newProjectBtn');
+      const sendBtn = document.getElementById('sendMessageBtn');
+
+      if (!newBtn || !sendBtn) {
+        console.error('Buttons not found in DOM');
+        return;
+      }
+
+      newBtn.addEventListener('click', createProject);
+      sendBtn.addEventListener('click', sendMessage);
+    });
 
     // ---- Canvas API placeholder ----
     async function fetchCanvasAssignments() {
