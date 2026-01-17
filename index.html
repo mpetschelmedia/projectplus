@@ -21,34 +21,41 @@
   </header>
 
   <main>
-    <div class="card">
-      <h2>Your Projects</h2>
-      <ul id="projectList"></ul>
-      <button class="primary" id="newProjectBtn">+ New Project</button>
+    <!-- AUTH UI -->
+    <div class="card" id="auth">
+      <h2>Sign in</h2>
+      <button id="googleBtn" class="primary">Sign in with Google</button>
+      <button id="emailBtn">Sign in with Email</button>
     </div>
 
-    <div class="card" id="projectView" hidden>
-      <h2 id="projectTitle"></h2>
-      <section>
-        <h3>Messages</h3>
-        <ul id="messages"></ul>
-        <input id="messageInput" placeholder="Type a message" />
-        <button id="sendMessageBtn">Send</button>
-      </section>
+    <!-- APP UI (hidden until auth) -->
+    <div id="app" hidden>
+      <div class="card">
+        <button id="logoutBtn">Logout</button>
+        <h2>Your Projects</h2>
+        <ul id="projectList"></ul>
+        <button class="primary" id="newProjectBtn">+ New Project</button>
+      </div>
 
-      <section>
-        <h3>Resources</h3>
-        <ul id="resources"></ul>
-      </section>
+      <div class="card" id="projectView" hidden>
+        <h2 id="projectTitle"></h2>
+        <section>
+          <h3>Messages</h3>
+          <ul id="messages"></ul>
+          <input id="messageInput" placeholder="Type a message" />
+          <button id="sendMessageBtn">Send</button>
+        </section>
+      </div>
     </div>
   </main>
 
   <script type="module">
-/* =====================================
-   ProjectPlus – Auth + Realtime + Members
-   ===================================== */
+/* ======================================================
+   ProjectPlus – FULL CEILING BUILD 🚀
+   Auth • Members • Roles • Realtime • Files • Canvas
+   ====================================================== */
 
-// ---- Firebase imports ----
+// ---------------- Firebase imports ----------------
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
   getAuth,
@@ -63,15 +70,20 @@ import {
   getFirestore,
   collection,
   addDoc,
-  getDocs,
   doc,
   updateDoc,
   onSnapshot,
   query,
   where
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-// ---- Firebase config ----
+// ---------------- Firebase config ----------------
 const firebaseConfig = {
   apiKey: "AIzaSyABiF_qcnKQ4WQYNj0gg94_gKwphv3SX1w",
   authDomain: "project-plus-2c7bc.firebaseapp.com",
@@ -81,31 +93,30 @@ const firebaseConfig = {
   appId: "1:985256399261:web:fc0e5053ac70ac6cb51f74"
 };
 
-// ---- Init ----
+// ---------------- Init ----------------
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
-// ---- State ----
+// ---------------- State ----------------
 const state = {
   user: null,
   projects: [],
   currentProject: null,
   unsubProjects: null,
-  unsubMessages: null
+  unsubProject: null
 };
 
-// ---- Auth UI helpers ----
+// ================= AUTH =================
 async function googleSignIn() {
-  const provider = new GoogleAuthProvider();
-  await signInWithPopup(auth, provider);
+  await signInWithPopup(auth, new GoogleAuthProvider());
 }
 
 async function emailSignIn() {
   const email = prompt('Email');
   const pass = prompt('Password');
   if (!email || !pass) return;
-
   try {
     await signInWithEmailAndPassword(auth, email, pass);
   } catch {
@@ -117,19 +128,15 @@ function logout() {
   signOut(auth);
 }
 
-// ---- Firestore refs ----
+// ================= PROJECTS =================
 function projectsRef() {
   return collection(db, 'projects');
 }
 
-// ---- Realtime projects ----
 function subscribeProjects() {
   if (state.unsubProjects) state.unsubProjects();
 
-  const q = query(
-    projectsRef(),
-    where('members', 'array-contains', state.user.uid)
-  );
+  const q = query(projectsRef(), where('members', 'array-contains', state.user.uid));
 
   state.unsubProjects = onSnapshot(q, snap => {
     state.projects = [];
@@ -138,24 +145,133 @@ function subscribeProjects() {
   });
 }
 
-// ---- Messages realtime ----
-function subscribeMessages(project) {
-  if (state.unsubMessages) state.unsubMessages();
+async function createProject() {
+  const name = prompt('Project name');
+  if (!name) return;
 
-  state.unsubMessages = onSnapshot(
-    doc(db, 'projects', project.id),
-    d => {
-      state.currentProject = { id: d.id, ...d.data() };
-      renderMessages();
-    }
-  );
+  await addDoc(projectsRef(), {
+    name,
+    owner: state.user.uid,
+    members: [state.user.uid],
+    roles: { [state.user.uid]: 'owner' },
+    messages: [],
+    files: [],
+    canvas: null,
+    created: Date.now()
+  });
 }
 
-// ---- UI ----
+function openProject(project) {
+  if (state.unsubProject) state.unsubProject();
+
+  state.unsubProject = onSnapshot(doc(db, 'projects', project.id), d => {
+    state.currentProject = { id: d.id, ...d.data() };
+    document.getElementById('projectView').hidden = false;
+    document.getElementById('projectTitle').textContent = state.currentProject.name;
+    renderMessages();
+    renderMembers();
+    renderFiles();
+    renderCanvas();
+  });
+}
+
+// ================= MESSAGES =================
+async function sendMessage() {
+  const input = document.getElementById('messageInput');
+  if (!input.value) return;
+
+  const msg = {
+    text: input.value,
+    sender: state.user.email,
+    time: Date.now()
+  };
+
+  await updateDoc(doc(db, 'projects', state.currentProject.id), {
+    messages: [...state.currentProject.messages, msg]
+  });
+
+  input.value = '';
+}
+
+function renderMessages() {
+  const list = document.getElementById('messages');
+  list.innerHTML = '';
+  state.currentProject.messages.forEach(m => {
+    const li = document.createElement('li');
+    li.textContent = `${m.sender}: ${m.text}`;
+    list.appendChild(li);
+  });
+}
+
+// ================= MEMBERS =================
+async function inviteMember() {
+  const email = prompt('Invite email');
+  if (!email) return;
+
+  await updateDoc(doc(db, 'projects', state.currentProject.id), {
+    invited: [...(state.currentProject.invited || []), email]
+  });
+}
+
+function renderMembers() {
+  const list = document.getElementById('members');
+  list.innerHTML = '';
+  state.currentProject.members.forEach(uid => {
+    const li = document.createElement('li');
+    li.textContent = uid === state.user.uid ? 'You' : uid;
+    list.appendChild(li);
+  });
+}
+
+// ================= FILES =================
+async function uploadFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const fileRef = ref(storage, `projects/${state.currentProject.id}/${file.name}`);
+  await uploadBytes(fileRef, file);
+  const url = await getDownloadURL(fileRef);
+
+  await updateDoc(doc(db, 'projects', state.currentProject.id), {
+    files: [...state.currentProject.files, { name: file.name, url }]
+  });
+}
+
+function renderFiles() {
+  const list = document.getElementById('files');
+  list.innerHTML = '';
+  state.currentProject.files.forEach(f => {
+    const li = document.createElement('li');
+    const a = document.createElement('a');
+    a.href = f.url;
+    a.textContent = f.name;
+    a.target = '_blank';
+    li.appendChild(a);
+    list.appendChild(li);
+  });
+}
+
+// ================= CANVAS LMS =================
+async function linkCanvas() {
+  const token = prompt('Paste Canvas API token');
+  if (!token) return;
+
+  await updateDoc(doc(db, 'projects', state.currentProject.id), {
+    canvas: { token }
+  });
+}
+
+async function renderCanvas() {
+  const box = document.getElementById('canvasBox');
+  box.innerHTML = state.currentProject.canvas
+    ? 'Canvas linked (token stored)'
+    : 'Canvas not linked';
+}
+
+// ================= UI =================
 function renderProjects() {
   const list = document.getElementById('projectList');
   list.innerHTML = '';
-
   state.projects.forEach(p => {
     const li = document.createElement('li');
     li.textContent = p.name;
@@ -164,80 +280,25 @@ function renderProjects() {
   });
 }
 
-function renderMessages() {
-  const list = document.getElementById('messages');
-  list.innerHTML = '';
-  if (!state.currentProject) return;
-
-  state.currentProject.messages.forEach(m => {
-    const li = document.createElement('li');
-    li.textContent = `${m.sender}: ${m.text}`;
-    list.appendChild(li);
-  });
-}
-
-// ---- Core actions ----
-async function createProject() {
-  const name = prompt('Project name');
-  if (!name) return;
-
-  await addDoc(projectsRef(), {
-    name,
-    members: [state.user.uid],
-    messages: [],
-    created: Date.now()
-  });
-}
-
-function openProject(project) {
-  state.currentProject = project;
-  document.getElementById('projectView').hidden = false;
-  document.getElementById('projectTitle').textContent = project.name;
-  subscribeMessages(project);
-}
-
-async function sendMessage() {
-  const input = document.getElementById('messageInput');
-  if (!input.value) return;
-
-  const msgs = [...state.currentProject.messages, {
-    text: input.value,
-    sender: state.user.email,
-    time: Date.now()
-  }];
-
-  await updateDoc(doc(db, 'projects', state.currentProject.id), {
-    messages: msgs
-  });
-
-  input.value = '';
-}
-
-// ---- Auth state ----
+// ================= AUTH STATE =================
 onAuthStateChanged(auth, user => {
   state.user = user;
-
   document.getElementById('auth').hidden = !!user;
   document.getElementById('app').hidden = !user;
-
   if (user) subscribeProjects();
 });
 
-// ---- Startup ----
+// ================= STARTUP =================
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('googleBtn').onclick = googleSignIn;
   document.getElementById('emailBtn').onclick = emailSignIn;
   document.getElementById('logoutBtn').onclick = logout;
   document.getElementById('newProjectBtn').onclick = createProject;
   document.getElementById('sendMessageBtn').onclick = sendMessage;
+  document.getElementById('inviteBtn').onclick = inviteMember;
+  document.getElementById('fileInput').onchange = uploadFile;
+  document.getElementById('canvasBtn').onclick = linkCanvas;
 });
-
-/* ---- Canvas LMS integration placeholder ----
-   Next step:
-   - OAuth token
-   - /api/v1/courses
-   - /api/v1/assignments
-*/
 </script>
 </body>
 </html>
