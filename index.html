@@ -44,121 +44,200 @@
   </main>
 
   <script type="module">
-  /* ================================
-     ProjectPlus – Clean Working Script
-     ================================ */
+/* =====================================
+   ProjectPlus – Auth + Realtime + Members
+   ===================================== */
 
-  // ---- Firebase imports (CDN, GitHub Pages safe) ----
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+// ---- Firebase imports ----
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  updateDoc,
+  onSnapshot,
+  query,
+  where
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-  // ---- Firebase config ----
-  const firebaseConfig = {
-    apiKey: "AIzaSyABiF_qcnKQ4WQYNj0gg94_gKwphv3SX1w",
-    authDomain: "project-plus-2c7bc.firebaseapp.com",
-    projectId: "project-plus-2c7bc",
-    storageBucket: "project-plus-2c7bc.appspot.com",
-    messagingSenderId: "985256399261",
-    appId: "1:985256399261:web:fc0e5053ac70ac6cb51f74"
-  };
+// ---- Firebase config ----
+const firebaseConfig = {
+  apiKey: "AIzaSyABiF_qcnKQ4WQYNj0gg94_gKwphv3SX1w",
+  authDomain: "project-plus-2c7bc.firebaseapp.com",
+  projectId: "project-plus-2c7bc",
+  storageBucket: "project-plus-2c7bc.appspot.com",
+  messagingSenderId: "985256399261",
+  appId: "1:985256399261:web:fc0e5053ac70ac6cb51f74"
+};
 
-  // ---- Initialize Firebase ----
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const projectsRef = collection(db, "projects");
+// ---- Init ----
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-  // ---- App state ----
-  const state = {
-    projects: [],
-    currentProject: null
-  };
+// ---- State ----
+const state = {
+  user: null,
+  projects: [],
+  currentProject: null,
+  unsubProjects: null,
+  unsubMessages: null
+};
 
-  // ---- UI helpers ----
-  function renderProjects() {
-    const list = document.getElementById('projectList');
-    list.innerHTML = '';
+// ---- Auth UI helpers ----
+async function googleSignIn() {
+  const provider = new GoogleAuthProvider();
+  await signInWithPopup(auth, provider);
+}
 
-    state.projects.forEach(p => {
-      const li = document.createElement('li');
-      li.textContent = p.name;
-      li.style.cursor = 'pointer';
-      li.onclick = () => openProject(p.id);
-      list.appendChild(li);
-    });
+async function emailSignIn() {
+  const email = prompt('Email');
+  const pass = prompt('Password');
+  if (!email || !pass) return;
+
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch {
+    await createUserWithEmailAndPassword(auth, email, pass);
   }
+}
 
-  function renderMessages() {
-    const list = document.getElementById('messages');
-    list.innerHTML = '';
+function logout() {
+  signOut(auth);
+}
 
-    if (!state.currentProject) return;
+// ---- Firestore refs ----
+function projectsRef() {
+  return collection(db, 'projects');
+}
 
-    state.currentProject.messages.forEach(m => {
-      const li = document.createElement('li');
-      li.textContent = `[${m.time}] ${m.text}`;
-      list.appendChild(li);
-    });
-  }
+// ---- Realtime projects ----
+function subscribeProjects() {
+  if (state.unsubProjects) state.unsubProjects();
 
-  // ---- Core actions ----
-  async function loadProjects() {
+  const q = query(
+    projectsRef(),
+    where('members', 'array-contains', state.user.uid)
+  );
+
+  state.unsubProjects = onSnapshot(q, snap => {
     state.projects = [];
-    const snap = await getDocs(projectsRef);
-
-    snap.forEach(d => {
-      state.projects.push({ id: d.id, ...d.data() });
-    });
-
+    snap.forEach(d => state.projects.push({ id: d.id, ...d.data() }));
     renderProjects();
-  }
-
-  async function createProject() {
-    const name = prompt("Project name?");
-    if (!name) return;
-
-    const project = {
-      name,
-      messages: [],
-      created: Date.now()
-    };
-
-    const ref = await addDoc(projectsRef, project);
-    state.projects.push({ id: ref.id, ...project });
-    renderProjects();
-  }
-
-  function openProject(id) {
-    state.currentProject = state.projects.find(p => p.id === id);
-    document.getElementById('projectView').hidden = false;
-    document.getElementById('projectTitle').textContent = state.currentProject.name;
-    renderMessages();
-  }
-
-  async function sendMessage() {
-    if (!state.currentProject) return;
-
-    const input = document.getElementById('messageInput');
-    if (!input.value) return;
-
-    state.currentProject.messages.push({
-      text: input.value,
-      time: new Date().toLocaleTimeString()
-    });
-
-    await updateDoc(doc(db, "projects", state.currentProject.id), {
-      messages: state.currentProject.messages
-    });
-
-    input.value = '';
-    renderMessages();
-  }
-
-  // ---- Startup ----
-  document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('newProjectBtn').addEventListener('click', createProject);
-    document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
-    loadProjects();
   });
+}
+
+// ---- Messages realtime ----
+function subscribeMessages(project) {
+  if (state.unsubMessages) state.unsubMessages();
+
+  state.unsubMessages = onSnapshot(
+    doc(db, 'projects', project.id),
+    d => {
+      state.currentProject = { id: d.id, ...d.data() };
+      renderMessages();
+    }
+  );
+}
+
+// ---- UI ----
+function renderProjects() {
+  const list = document.getElementById('projectList');
+  list.innerHTML = '';
+
+  state.projects.forEach(p => {
+    const li = document.createElement('li');
+    li.textContent = p.name;
+    li.onclick = () => openProject(p);
+    list.appendChild(li);
+  });
+}
+
+function renderMessages() {
+  const list = document.getElementById('messages');
+  list.innerHTML = '';
+  if (!state.currentProject) return;
+
+  state.currentProject.messages.forEach(m => {
+    const li = document.createElement('li');
+    li.textContent = `${m.sender}: ${m.text}`;
+    list.appendChild(li);
+  });
+}
+
+// ---- Core actions ----
+async function createProject() {
+  const name = prompt('Project name');
+  if (!name) return;
+
+  await addDoc(projectsRef(), {
+    name,
+    members: [state.user.uid],
+    messages: [],
+    created: Date.now()
+  });
+}
+
+function openProject(project) {
+  state.currentProject = project;
+  document.getElementById('projectView').hidden = false;
+  document.getElementById('projectTitle').textContent = project.name;
+  subscribeMessages(project);
+}
+
+async function sendMessage() {
+  const input = document.getElementById('messageInput');
+  if (!input.value) return;
+
+  const msgs = [...state.currentProject.messages, {
+    text: input.value,
+    sender: state.user.email,
+    time: Date.now()
+  }];
+
+  await updateDoc(doc(db, 'projects', state.currentProject.id), {
+    messages: msgs
+  });
+
+  input.value = '';
+}
+
+// ---- Auth state ----
+onAuthStateChanged(auth, user => {
+  state.user = user;
+
+  document.getElementById('auth').hidden = !!user;
+  document.getElementById('app').hidden = !user;
+
+  if (user) subscribeProjects();
+});
+
+// ---- Startup ----
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('googleBtn').onclick = googleSignIn;
+  document.getElementById('emailBtn').onclick = emailSignIn;
+  document.getElementById('logoutBtn').onclick = logout;
+  document.getElementById('newProjectBtn').onclick = createProject;
+  document.getElementById('sendMessageBtn').onclick = sendMessage;
+});
+
+/* ---- Canvas LMS integration placeholder ----
+   Next step:
+   - OAuth token
+   - /api/v1/courses
+   - /api/v1/assignments
+*/
 </script>
 </body>
 </html>
