@@ -6,72 +6,175 @@
   <title>ProjectPlus - Ultimate</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { background-color: #1a202c; color: #edf2f7; }
-    .card { @apply bg-gray-800 p-6 rounded-2xl shadow-lg mb-4; }
-    button { @apply px-4 py-2 rounded-lg transition hover:bg-gray-700; }
-    input, select, textarea { @apply bg-gray-700 text-white p-2 rounded-lg w-full; }
-    ul { @apply list-disc pl-5; }
+    body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
+    .card { @apply bg-gray-800 p-6 rounded-3xl shadow-xl mb-4; }
+    .btn { @apply px-4 py-2 rounded-xl font-semibold transition-all duration-200; }
+    .btn:hover { @apply bg-gray-700; }
+    input, textarea { @apply bg-gray-700 text-white p-3 rounded-xl w-full; }
+    ul { @apply list-disc pl-5 max-h-60 overflow-y-auto; }
+    .sidebar { @apply w-full md:w-1/3 p-4 bg-gray-900 rounded-3xl shadow-xl }; 
+    .content { @apply flex-1 p-4; }
+    .tab { @apply inline-block px-4 py-2 cursor-pointer rounded-xl hover:bg-gray-700 mr-2; }
+    .tab-active { @apply bg-blue-600; }
+    .modal { @apply fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden; }
+    .modal-content { @apply bg-gray-800 p-6 rounded-3xl w-96; }
+    .toast { @apply fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded-xl shadow-lg; display:none; }
   </style>
 </head>
-<body class="flex flex-col items-center p-4">
+<body class="flex flex-col md:flex-row gap-4 min-h-screen">
 
-  <!-- AUTH -->
-  <div class="card w-full max-w-md" id="auth">
-    <h2 class="text-2xl font-bold mb-4">Sign in to ProjectPlus</h2>
-    <button id="googleBtn" class="bg-blue-500 mb-2 w-full">Sign in with Google</button>
-    <button id="emailBtn" class="bg-green-500 w-full">Sign in with Email</button>
-  </div>
-
-  <!-- APP -->
-  <div id="app" hidden class="w-full max-w-4xl flex flex-col md:flex-row gap-4">
-
-    <!-- PROJECT LIST -->
-    <div class="card flex-1">
-      <button id="logoutBtn" class="bg-red-500 mb-4 w-full">Logout</button>
+  <!-- Sidebar / Projects -->
+  <div class="sidebar">
+    <div id="auth" class="card">
+      <h2 class="text-2xl font-bold mb-4">Sign In</h2>
+      <button id="googleBtn" class="btn bg-blue-500 w-full mb-2">Google</button>
+      <button id="emailBtn" class="btn bg-green-500 w-full">Email</button>
+    </div>
+    <div id="app" class="hidden flex flex-col">
+      <button id="logoutBtn" class="btn bg-red-500 mb-4 w-full">Logout</button>
       <h2 class="text-xl font-bold mb-2">Your Projects</h2>
       <ul id="projectList"></ul>
-      <button id="newProjectBtn" class="bg-blue-600 mt-4 w-full">+ New Project</button>
+      <button id="newProjectBtn" class="btn bg-blue-600 mt-4 w-full">+ New Project</button>
     </div>
-
-    <!-- PROJECT VIEW -->
-    <div class="card flex-2" id="projectView" hidden>
-      <h2 id="projectTitle" class="text-2xl font-bold mb-4"></h2>
-      
-      <!-- Messages -->
-      <section class="mb-4">
-        <h3 class="text-xl font-semibold">Messages</h3>
-        <ul id="messages" class="mb-2"></ul>
-        <input id="messageInput" placeholder="Type a message" class="mb-2" />
-        <button id="sendMessageBtn" class="bg-blue-500 w-full mb-2">Send</button>
-      </section>
-
-      <!-- Members -->
-      <section class="mb-4">
-        <h3 class="text-xl font-semibold">Members</h3>
-        <ul id="members" class="mb-2"></ul>
-        <button id="inviteBtn" class="bg-green-500 w-full mb-2">Invite Member</button>
-      </section>
-
-      <!-- Files -->
-      <section class="mb-4">
-        <h3 class="text-xl font-semibold">Files</h3>
-        <ul id="files" class="mb-2"></ul>
-        <input type="file" id="fileInput" class="mb-2" />
-      </section>
-
-      <!-- Canvas LMS -->
-      <section>
-        <h3 class="text-xl font-semibold">Canvas LMS Integration</h3>
-        <div id="canvasBox" class="mb-2"></div>
-        <button id="canvasBtn" class="bg-yellow-500 w-full">Link Canvas</button>
-      </section>
-
-    </div>
-
   </div>
 
-  <!-- Firebase + App Script -->
-  <script type="module" src="projectplus_app.js"></script>
+  <!-- Content / Project View -->
+  <div class="content card hidden" id="projectView">
+    <h2 id="projectTitle" class="text-2xl font-bold mb-4"></h2>
 
+    <!-- Tabs -->
+    <div id="tabs" class="mb-4">
+      <span class="tab tab-active" data-tab="messages">Messages</span>
+      <span class="tab" data-tab="members">Members</span>
+      <span class="tab" data-tab="files">Files</span>
+      <span class="tab" data-tab="canvas">Canvas</span>
+    </div>
+
+    <!-- Tab Content -->
+    <div id="tabContent">
+      <div id="messagesTab">
+        <ul id="messages" class="mb-2"></ul>
+        <input id="messageInput" placeholder="Type a message" class="mb-2" />
+        <button id="sendMessageBtn" class="btn bg-blue-500 w-full mb-2">Send</button>
+      </div>
+      <div id="membersTab" class="hidden">
+        <ul id="members" class="mb-2"></ul>
+        <button id="inviteBtn" class="btn bg-green-500 w-full mb-2">Invite Member</button>
+      </div>
+      <div id="filesTab" class="hidden">
+        <ul id="files" class="mb-2"></ul>
+        <input type="file" id="fileInput" class="mb-2" />
+      </div>
+      <div id="canvasTab" class="hidden">
+        <div id="canvasBox" class="mb-2"></div>
+        <button id="canvasBtn" class="btn bg-yellow-500 w-full">Link Canvas</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Firebase & App Script Inline -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, doc, addDoc, updateDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyABiF_qcnKQ4WQYNj0gg94_gKwphv3SX1w",
+      authDomain: "project-plus-2c7bc.firebaseapp.com",
+      projectId: "project-plus-2c7bc",
+      storageBucket: "project-plus-2c7bc.appspot.com",
+      messagingSenderId: "985256399261",
+      appId: "1:985256399261:web:fc0e5053ac70ac6cb51f74"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    const state = { user: null, projects: [], currentProject: null, unsubProjects: null, unsubProject: null };
+
+    // ---------------- AUTH ----------------
+    async function googleSignIn() { try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch(e){ showToast(e.message); } }
+    async function emailSignIn() {
+      const email = prompt('Email'); const pass = prompt('Password'); if(!email||!pass) return;
+      try { await signInWithEmailAndPassword(auth,email,pass); }
+      catch { await createUserWithEmailAndPassword(auth,email,pass); }
+    }
+    function logout() { signOut(auth); }
+
+    // ---------------- PROJECTS ----------------
+    function projectsRef(){return collection(db,'projects');}
+    function subscribeProjects(){
+      if(state.unsubProjects) state.unsubProjects();
+      const q=query(projectsRef(),where('members','array-contains',state.user.uid));
+      state.unsubProjects=onSnapshot(q,snap=>{
+        state.projects=[]; snap.forEach(d=>state.projects.push({id:d.id,...d.data()})); renderProjects();
+      });
+    }
+    async function createProject(){
+      const name=prompt('Project name'); if(!name) return;
+      await addDoc(projectsRef(),{
+        name, owner:state.user.uid, members:[state.user.uid], roles:{[state.user.uid]:'owner'}, messages:[], files:[], canvas:null, created:Date.now()
+      });
+    }
+    function openProject(project){
+      if(state.unsubProject) state.unsubProject();
+      state.unsubProject=onSnapshot(doc(db,'projects',project.id),d=>{
+        state.currentProject={id:d.id,...d.data()};
+        document.getElementById('projectView').classList.remove('hidden');
+        document.getElementById('projectTitle').textContent=state.currentProject.name;
+        showTab('messages'); renderMessages(); renderMembers(); renderFiles(); renderCanvas();
+      });
+    }
+
+    // ---------------- MESSAGES ----------------
+    async function sendMessage(){
+      const input=document.getElementById('messageInput'); if(!input.value) return;
+      const msg={text:input.value,sender:state.user.email,time:Date.now()};
+      await updateDoc(doc(db,'projects',state.currentProject.id),{messages:[...state.currentProject.messages,msg]});
+      input.value='';
+    }
+    function renderMessages(){
+      const list=document.getElementById('messages'); list.innerHTML='';
+      state.currentProject.messages.forEach(m=>{const li=document.createElement('li'); li.textContent=`${m.sender}: ${m.text}`; list.appendChild(li);});
+    }
+
+    // ---------------- MEMBERS ----------------
+    async function inviteMember(){ const email=prompt('Invite email'); if(!email) return; await updateDoc(doc(db,'projects',state.currentProject.id),{invited:[...(state.currentProject.invited||[]),email]}); }
+    function renderMembers(){const list=document.getElementById('members'); list.innerHTML=''; state.currentProject.members.forEach(uid=>{const li=document.createElement('li'); li.textContent=uid===state.user.uid?'You':uid; list.appendChild(li);});}
+
+    // ---------------- FILES ----------------
+    async function uploadFile(e){ const file=e.target.files[0]; if(!file) return; const fileRef=ref(storage,`projects/${state.currentProject.id}/${file.name}`); await uploadBytes(fileRef,file); const url=await getDownloadURL(fileRef); await updateDoc(doc(db,'projects',state.currentProject.id),{files:[...state.currentProject.files,{name:file.name,url}]}); }
+    function renderFiles(){const list=document.getElementById('files'); list.innerHTML=''; state.currentProject.files.forEach(f=>{const li=document.createElement('li'); const a=document.createElement('a'); a.href=f.url; a.textContent=f.name; a.target='_blank'; li.appendChild(a); list.appendChild(li);});}
+
+    // ---------------- CANVAS ----------------
+    async function linkCanvas(){ const token=prompt('Paste Canvas API token'); if(!token) return; await updateDoc(doc(db,'projects',state.currentProject.id),{canvas:{token}}); renderCanvas(); }
+    function renderCanvas(){ const box=document.getElementById('canvasBox'); box.innerHTML=state.currentProject.canvas?'Canvas linked (token stored)':'Canvas not linked'; }
+
+    // ---------------- TABS ----------------
+    function showTab(tab){ document.querySelectorAll('#tabContent > div').forEach(d=>d.classList.add('hidden')); document.getElementById(tab+'Tab').classList.remove('hidden'); document.querySelectorAll('.tab').forEach(t=>t.classList.remove('tab-active')); document.querySelector(`.tab[data-tab='${tab}']`).classList.add('tab-active');}
+    document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>showTab(t.dataset.tab));
+
+    // ---------------- TOAST ----------------
+    function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); }
+
+    // ---------------- INIT ----------------
+    onAuthStateChanged(auth,user=>{state.user=user; document.getElementById('auth').classList.toggle('hidden',!!user); document.getElementById('app').classList.toggle('hidden',!user); if(user) subscribeProjects();});
+    document.addEventListener('DOMContentLoaded',()=>{
+      document.getElementById('googleBtn').onclick=googleSignIn;
+      document.getElementById('emailBtn').onclick=emailSignIn;
+      document.getElementById('logoutBtn').onclick=logout;
+      document.getElementById('newProjectBtn').onclick=createProject;
+      document.getElementById('sendMessageBtn').onclick=sendMessage;
+      document.getElementById('inviteBtn').onclick=inviteMember;
+      document.getElementById('fileInput').onchange=uploadFile;
+      document.getElementById('canvasBtn').onclick=linkCanvas;
+    });
+  </script>
 </body>
 </html>
