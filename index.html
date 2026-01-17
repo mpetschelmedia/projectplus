@@ -48,23 +48,27 @@
     // 1. Create a Firebase project
     // 2. Enable Firestore Database
     // 3. Replace the config below with your own
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+   // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT.appspot.com",
-      messagingSenderId: "XXXX",
-      appId: "XXXX"
-    };
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyABiF_qcnKQ4WQYNj0gg94_gKwphv3SX1w",
+  authDomain: "project-plus-2c7bc.firebaseapp.com",
+  projectId: "project-plus-2c7bc",
+  storageBucket: "project-plus-2c7bc.firebasestorage.app",
+  messagingSenderId: "985256399261",
+  appId: "1:985256399261:web:fc0e5053ac70ac6cb51f74",
+  measurementId: "G-PJQS8DRNRS"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    const projectsRef = collection(db, "projects");
-
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
     // ---- Mock Data Store (replace later with backend or IndexedDB) ----
     const state = {
